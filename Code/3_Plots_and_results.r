@@ -14,7 +14,7 @@ ggplot(data = soil_ranks,
 
 soil_ranks_export = soil_ranks %>%
   dplyr::select(Dataset, Model, dependent, independent, Rank) 
-write_csv(soil_ranks_export, "./Results/Rank_Table_040622.csv")
+write_csv(soil_ranks_export, "./Results/Rank_Table.csv")
 
 # Spearman rank corr
 soil_ranks %>%
@@ -58,9 +58,7 @@ bind_rows(
   for1.phcv[[2]] %>% mutate(Dataset = 'Forest 1'),
   for2.phcv[[2]] %>% mutate(Dataset = 'Forest 2')
 ) %>%
-  mutate(#Rank = if_else(is.na(Rank), rank_varimp, Rank),
-         #independent = if_else(is.na(independent), Variable, independent),
-         Model = factor(Model, levels = c('OLS', 'SF', 'regr.svm', 'regr.nnet', 'regr.ranger'),
+  mutate(Model = factor(Model, levels = c('OLS', 'SF', 'regr.svm', 'regr.nnet', 'regr.ranger'),
                       labels = c('OLS', 'SF', 'SVM', 'ANN', 'RF'))) %>%
   ggplot(data = .,
          mapping = aes(x = Model, y = Rank, group = independent)) +
@@ -68,7 +66,6 @@ bind_rows(
     stat_summary(geom = 'point', fun = mean, size = 4, pch = 19, lwd = 2, mapping = aes(color = independent)) +
     stat_summary(geom = 'point', fun = mean, size = 4, pch = 1, lwd = 2, mapping = aes(group = independent)) +
     ylab("Average ranking of\npredictor variables") +
-    #scale_y_continuous() +
     scale_y_reverse(breaks = c(6,5,4,3,2,1), limits = c(6.1, 0.9)) +
     theme_bw() +
     theme(legend.position = 'bottom',
@@ -97,7 +94,7 @@ soil_results_export = soil_results %>%
                       labels = c('OLS', 'SF', 'SVM', 'ANN', 'RF', 'RFSp'))) %>%
   dplyr::select(Dataset, Model, dependent, MoranI_Y, MoranI_resid, RMSE) %>%
   unique
-write_csv(soil_results_export, './Results/MoranI_RMSE_Table_030122.csv')
+write_csv(soil_results_export, './Results/MoranI_RMSE_Table.csv')
 
 soil_results_export %>%
   ggplot(data = .,
@@ -156,9 +153,9 @@ soil_results %>%
 gg_soil_rmseresi = wrap_plots(gg_soil_rmse, gg_soil_residI, ncol = 2) + 
   plot_annotation(tag_levels = 'a',
                   theme = theme(plot.title = element_text(size = 20, family = 'bold')))
-# ggsave(plot = gg_soil_rmseresi,
-#        filename = './Results/RMSE_ResidI.tiff',
-#        width = 32, height = 15, units = 'cm', dpi = 300, device = 'tiff')
+ggsave(plot = gg_soil_rmseresi,
+       filename = './Results/RMSE_ResidI.tiff',
+       width = 32, height = 15, units = 'cm', dpi = 300, device = 'tiff')
 
 ## Fig 2
 soil_results_fig2 = soil_results_export %>%
@@ -251,7 +248,7 @@ soil_resids =
             dune.resids,
             for1.resids,
             for2.resids)
-# write_csv(soil_resids, './Results/Residuals_Table_040622.csv')
+write_csv(soil_resids, './Results/Residuals_Table.csv')
 
 agri.resids %>%
   group_by(Dataset, dependent) %>%
@@ -297,10 +294,6 @@ extr_optparams = function(lst, yvars) {
   )
   tuneres_df = do.call(bind_rows, tuneres) %>%
     mutate(dependent = rep(depvars, each = 3))# %>% 
-    #pivot_wider(names_from = Model, values_from = size:degree)# %>%
-    #dplyr::select(dependent,
-    #              size_ANN, mtry_RF, num.trees_RF,
-    #              kernel_SVM, degree_SVM, nu_SVM, cost_SVM)
 
   return(tuneres_df)
 
@@ -323,20 +316,20 @@ optparams_df =
       dplyr::select(Dataset, 1:(ncol(.)-1))
   )
 
-# write_csv(optparams_df, "./Results/Optimal_parameters_041222.csv")
+write_csv(optparams_df, "./Results/Optimal_parameters.csv")
 
 
 
 ## Corrplots
-# tiff("./Results/FigS5_Corrplots_new.tiff", width = 8.8, height = 8, units = 'in',
-#      pointsize = 12, compression = 'lzw', bg = 'white', res = 300)
-# par(mfrow = c(2,2))
-# corr_mat_simp(as.data.frame(for1), for1.xvec, "Mixed forest I")
-# corr_mat_simp(as.data.frame(for2), for2.xvec, "Mixed forest II")
-# corr_mat_simp(as.data.frame(agri), agri.xvec, "Agricultural field")
-# corr_mat_simp(as.data.frame(dune), dune.xvec, "Coastal dune")
-# par(mfrow = c(1,1))
-# dev.off()
+tiff("./Results/Corrplots_by_datasets.tiff", width = 8.8, height = 8, units = 'in',
+     pointsize = 12, compression = 'lzw', bg = 'white', res = 300)
+par(mfrow = c(2,2))
+corr_mat_simp(as.data.frame(for1), for1.xvec, "Mixed forest I")
+corr_mat_simp(as.data.frame(for2), for2.xvec, "Mixed forest II")
+corr_mat_simp(as.data.frame(agri), agri.xvec, "Agricultural field")
+corr_mat_simp(as.data.frame(dune), dune.xvec, "Coastal dune")
+par(mfrow = c(1,1))
+dev.off()
 
 
 ## Supplementary: all lm coefficients
@@ -367,5 +360,6 @@ for2_lmstring =
 results_lmstring = 
     rbind(agri_lmstring, dune_lmstring,
           for1_lmstring, for2_lmstring)
-# write.csv(results_lmstring, "./Output/LM_Results_051522.csv")
+write.csv(results_lmstring, "./Output/LM_Results.csv")
 
+## END OF FILE ####

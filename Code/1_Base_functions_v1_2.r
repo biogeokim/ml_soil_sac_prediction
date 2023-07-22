@@ -1,10 +1,12 @@
 ## Base functions for ML-SAC manuscript
 ## Written by Insang Song (sigmafelix@hotmail.com)
+## Last update: 06/16/2023: data splitting
+
 
 if (!require(pacman)) { 
     install.packages("pacman")
     library(pacman) }
-p_load(tidyverse, spdep, vegan, sf, sp, stringr, readxl, kernlab, ranger, landmap, foreach, vip, doParallel, CAST, mlr, parallelMap, doSNOW, corrplot, patchwork)
+p_load(tidyverse, spdep, vegan, sf, sp, stringr, readxl, kernlab, ranger, landmap, foreach, vip, doParallel, CAST, mlr, parallelMap, doSNOW, corrplot)
 
 
 ## Utility functions
@@ -403,6 +405,14 @@ mlr_learn <- function(input_data, algs = list(), yvec, xvec,
       lre <- makeRegrTask(data = input_std, 
                           target = yvec,
                           coordinates = st_centroid(input_data, of_largest_polygon = TRUE) %>% st_coordinates %>% data.frame) 
+      
+      ## 06172023: split (2:1 or 3:1)
+      ## lre_resamp -> lre_train, lre_task
+      lre_resamp = makeResampleInstance("Holdout", lre)
+      lre_train = subsetTask(lre, lre_resamp$train.inds[[1]])
+      lre_test = subsetTask(lre, lre_resamp$test.inds[[1]])
+
+
       # parset
       if (grepl('*.(lm)$', x)){
         pset <- makeParamSet(
@@ -519,7 +529,8 @@ mlr_learn <- function(input_data, algs = list(), yvec, xvec,
           lrs_outer = makeResampleDesc(method = cvouter,
                                   iters = ncv,
                                   predict = 'both') 
-          outerwrapper = tuneParams(learner = lx, task = lre,
+        # task=lre to lre_train (06172023)
+          outerwrapper = tuneParams(learner = lx, task = lre_train,
                                   resampling = lrs_outer,
                                   control = ctrl,
                                   par.set = pset,
@@ -535,7 +546,10 @@ mlr_learn <- function(input_data, algs = list(), yvec, xvec,
 
       hyper_optim = setHyperPars(learner = lx,
                                    par.vals = outerwrapper$x)
-      trained_optim = mlr::train(learner = hyper_optim, task = lre)
+      # task=lre to lre_train (06172023)
+      trained_optim = mlr::train(learner = hyper_optim, task = lre_train)
+      
+      # entire data prediction
       lres = predict(trained_optim, task = lre)
       lres = lres$data$truth - lres$data$response
       #getTaskData(lres)[,yvec] %>% unlist %>% as.vector
@@ -765,7 +779,6 @@ posthoc_mi <- function(mi, sfd, yvec, xvec,
              MoranI_Y = res_ys_mi,
              MoranI_resid = res_resid_mi) -> res_total
 
-
   
   model_nums = length(names(mi[[1]]))
   res_varimp <- lapply(mi, function(x) lapply(x, function (y) rank(-y[[3]]$res))) %>% 
@@ -779,7 +792,21 @@ posthoc_mi <- function(mi, sfd, yvec, xvec,
     cbind(., dependent = rep(yvec, each = model_nums)) %>% 
     pivot_longer(cols = 2:(ncol(.)-1), names_to = 'independent', values_to = 'Rank')
   
+#   res_resid <- res_resid %>% 
+#     lapply(function(x) 
+#       lapply(x, function(y) moran.test(y, sfd.nw, zero.policy = TRUE)$estimate[1]) %>% 
+#         do.call(bind_rows, .) %>% 
+#         data.frame %>% 
+#         cbind(rownames(.), .)
+#     ) %>% 
+#     do.call(bind_rows, .)
+#   colnames(res_resid)[1] <- 'Resid_Y'
 
+#   res_total <- bind_cols(res_result, res_resid) %>% 
+#     mutate(dependent = rep(yvec, each = model_nums), # yvec was not sorted (020622)
+#            MoranI_Y = yvec.mi %>% do.call(c, .) %>% rep(., each = model_nums)) %>% 
+#     dplyr::select(-Resid_Y)
+#   colnames(res_total) <- c('Model', 'RMSE', 'MoranI_resid', 'dependent', 'MoranI_Y')
   
   ## 3. sf_analysis
   res_sf <- sf_analysis(sfd, yvec, xvec, mode = 'point', maxval = maxval, pp = pp, extract.coef = FALSE)
@@ -905,6 +932,10 @@ posthoc_rfsp <- function(rfsp, sf, dep.name, mode = 'point',
         spdep::mat2listw(.) %>% 
         .$neighbours
     }
+    #sf.nei <- network_wm %>% 
+    #  st_distmat_to_swm(., threshold) %>% 
+    #  spdep::mat2listw(.) %>% 
+    #  .$neighbours
   }
   sf.neiw <- nb2listw(sf.nei, zero.policy = TRUE)
   ys <- scale(unlist(st_set_geometry(sf, NULL)[,dep.name]))

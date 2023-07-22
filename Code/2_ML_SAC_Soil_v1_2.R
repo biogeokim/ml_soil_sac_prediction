@@ -1,21 +1,22 @@
-## Machine learning and spatial autocorrelation in soil dataset
+## Machine learning and spatial autocorrelation in soil-geomorphic modeling
 ## Code written by Insang Song (sigmafelix@hotmail.com)
-## Last revised 09/05/2022
+## Last revised 07/21/2023
 
 # Change the directory before running code blocks below
 # The directory should have
 ## - Data (directory): including excel files
 ## - Code (directory): including codes
+setwd("__your__cloned__directory__")
 
 # Sourcing the functions
 set.seed(202006, "L'Ecuyer")
 
 # Part 1: Data preparation ####
 # Data import
-agri <- read_excel('./Data/Agricultural.xls')
-dune <- read_excel('./Data/Coastal dune.xls')
-for1 <- read_excel('./Data/Mixed forest 1.xls')
-for2 <- read_excel('./Data/Mixed forest 2.xls')
+agri <- read_excel('Data/Agricultural.xls')
+dune <- read_excel('Data/Coastal dune.xls')
+for1 <- read_excel('Data/Mixed forest 1.xls')
+for2 <- read_excel('Data/Mixed forest 2.xls')
 
 # Multicore use setting
 #registerDoParallel(cores = 8)
@@ -83,10 +84,12 @@ for1.rfsp.l <- split(for1.yvec, for1.yvec) %>%
 for2.rfsp.l <- split(for2.yvec, for2.yvec) %>% 
   lapply(function(x) rfsp(for2, covar.names = colnames(for2)[1:6], dep.name = x))
 
+save(list = grep("^(agri|dune|for1|for2)", ls(), value = TRUE),
+     file = "./Results/MLSAC_Run_Split_sort_061723.RData")
 
 # Part 3: extract model results ####
 # 3-1: Moran's I and variable importance 
-load("./Results/MLSAC_Rerun_cv10_sort_020922.RData")
+load("./Results/MLSAC_Run_Split_sort_061723.RData")
 
 # CV (this part will be use for the drafting!!!) ####
 agri.phcv <- posthoc_mi(agri.micv, agri, agri.yvec, agri.xvec)
@@ -254,6 +257,7 @@ colnames(for1.resvi) <- colnames(for1.resvi) %>% str_split('_') %>% lapply(rev) 
   lapply(function(x) str_c(x, collapse='_')) %>% do.call(c,.)
 colnames(for2.resvi) <- colnames(for2.resvi) %>% str_split('_') %>% lapply(rev) %>% 
   lapply(function(x) str_c(x, collapse='_')) %>% do.call(c,.)
+
 
 
 # Part 4: Combine results ####
