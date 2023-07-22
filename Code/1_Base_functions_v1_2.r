@@ -6,7 +6,10 @@
 if (!require(pacman)) { 
     install.packages("pacman")
     library(pacman) }
-p_load(tidyverse, spdep, vegan, sf, sp, stringr, readxl, kernlab, ranger, landmap, foreach, vip, doParallel, CAST, mlr, parallelMap, doSNOW, corrplot)
+p_load(tidyverse, spdep, vegan, sf, sp, stringr, readxl, kernlab, ranger, foreach, vip, doParallel, CAST, mlr, parallelMap, doSNOW, corrplot, devtools)
+
+# landmap package for RFSp is in a GitHub repository
+devtools::install_github("envirometrix/landmap")
 
 
 ## Utility functions
